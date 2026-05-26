@@ -1,69 +1,131 @@
-import { saveScore } from "../api/api.js";
+import { clickUpgrades } from "../systems/upgradeSystem.js";
+import { resetEmployees } from "../systems/employeeSystem.js";
+
+const API_URL = "https://mouse-clicker-api-hwcaehcxdhejg4e3.spaincentral-01.azurewebsites.net";
 
 export function showSaveUI(scene) {
 
     scene.gameLocked = true;
 
-    let input = "";
+    const cx = scene.scale.width / 2;
+    const cy = scene.scale.height / 2;
 
-    const box = scene.add.rectangle(400, 300, 360, 200, 0x000000, 0.85);
+    let inputText = "";
 
-    const text = scene.add.text(400, 280, "", {
-        fontSize: "40px",
+    const bg = scene.add.rectangle(cx, cy, 360, 220, 0x000000, 0.95);
+
+    const title = scene.add.text(cx, cy - 70, "NAME (3 LETTERS)", {
+        fontSize: "22px",
+        color: "#ffffff"
+    }).setOrigin(0.5);
+
+    const text = scene.add.text(cx, cy - 10, "", {
+        fontSize: "42px",
         color: "#00ff00"
     }).setOrigin(0.5);
 
-    const saveBtn = scene.add.text(480, 340, "SAVE", {
+    const saveBtn = scene.add.text(cx + 90, cy + 70, "SAVE", {
         fontSize: "22px",
-        color: "#0f0"
-    }).setInteractive().setOrigin(0.5);
+        color: "#00ff00",
+        backgroundColor: "#222",
+        padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive();
 
-    const returnBtn = scene.add.text(320, 340, "RETURN", {
+    const returnBtn = scene.add.text(cx - 90, cy + 70, "RETURN", {
         fontSize: "22px",
-        color: "#f00"
-    }).setInteractive().setOrigin(0.5);
+        color: "#ff4444",
+        backgroundColor: "#222",
+        padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive();
 
-    const ui = [box, text, saveBtn, returnBtn];
+    const closeUI = () => {
 
-    scene.input.keyboard.removeAllListeners();
+        bg.destroy();
+        title.destroy();
+        text.destroy();
+        saveBtn.destroy();
+        returnBtn.destroy();
 
-    scene.input.keyboard.on("keydown", (e) => {
+        scene.gameLocked = false;
+    };
 
-        if (!scene.gameLocked) return;
+    const keyHandler = (event) => {
 
-        if (e.key === "Backspace") input = input.slice(0, -1);
-        else if (/^[a-zA-Z]$/.test(e.key) && input.length < 3)
-            input += e.key.toUpperCase();
+        if (event.key === "Backspace") {
+            inputText = inputText.slice(0, -1);
+        }
+        else if (/^[a-zA-Z]$/.test(event.key) && inputText.length < 3) {
+            inputText += event.key.toUpperCase();
+        }
 
-        text.setText(input);
-    });
+        text.setText(inputText);
+    };
 
-    saveBtn.on("pointerdown", () => {
-        if (!input) return;
+    scene.input.keyboard.on("keydown", keyHandler);
 
-        saveBtn.disableInteractive();
-        returnBtn.disableInteractive();
+    saveBtn.on("pointerdown", async () => {
 
-        saveScore(input, scene.score)
-            .catch(() => {
-                // Silently continue if the save fails, but still close the UI.
-            })
-            .finally(() => {
-                scene.score = 0;
-                scene.scoreText.setText("0");
+        if (!inputText) return;
 
-                scene.clickIndex = 0;
-                scene.employees = 0;
-                scene.employeeSpeedIndex = 0;
-                scene.employeeDelay = 2000;
+        try {
 
-                ui.forEach(o => o.destroy());
-                scene.gameLocked = false;
+            await fetch(`${API_URL}/score`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    playerName: inputText,
+                    score: scene.score
+                })
             });
+
+        } catch (err) {
+            console.error(err);
+        }
+
+        // =====================
+        // FULL RESET
+        // =====================
+
+        scene.score = 0;
+        scene.scoreText.setText("0");
+
+        // click upgrades
+        scene.clickIndex = 0;
+
+        // multiplier
+        scene.multiplierIndex = 0;
+        scene.clickMultiplier = 1;
+
+        // employees
+        resetEmployees(scene);
+
+        // BUTTONS RESET
+        const next = clickUpgrades[1];
+
+        scene.upgradeBtn.setText(
+            next
+                ? `UPGRADE CLICK\n${next.cost}`
+                : "MAX"
+        );
+
+        scene.empBtn.setText("EMPLOYEE\n300");
+
+        scene.speedBtn.setVisible(false).disableInteractive();
+
+        scene.multBtn.setVisible(false).disableInteractive();
+
+        // cleanup
+        scene.input.keyboard.off("keydown", keyHandler);
+
+        closeUI();
     });
 
     returnBtn.on("pointerdown", () => {
-        ui.forEach(o => o.destroy());
-        scene.gameLocked = false;
+
+        scene.input.keyboard.off("keydown", keyHandler);
+
+        closeUI();
     });
 }
