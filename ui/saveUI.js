@@ -3,7 +3,7 @@ import { resetEmployees } from "../systems/employeeSystem.js";
 
 const API_URL = "https://mouse-clicker-api-hwcaehcxdhejg4e3.spaincentral-01.azurewebsites.net";
 
-export function showSaveUI(scene) {
+export function showSaveUI(scene, gameOver = false) {
 
     scene.gameLocked = true;
 
@@ -12,39 +12,47 @@ export function showSaveUI(scene) {
 
     let inputText = "";
 
-    const bg = scene.add.rectangle(cx, cy, 360, 220, 0x000000, 0.95);
+    const bg = scene.add.rectangle(cx, cy, 420, 260, 0x000000, 0.95);
 
-    const title = scene.add.text(cx, cy - 70, "NAME (3 LETTERS)", {
-        fontSize: "22px",
-        color: "#ffffff"
-    }).setOrigin(0.5);
+    const title = scene.add.text(cx, cy - 90,
+        gameOver ? "GAME OVER - SAVE SCORE" : "NAME (3 LETTERS)",
+        {
+            fontSize: "22px",
+            color: "#ffffff"
+        }
+    ).setOrigin(0.5);
 
     const text = scene.add.text(cx, cy - 10, "", {
-        fontSize: "42px",
-        color: "#00ff00"
+        fontSize: "54px",
+        color: "#00ff00",
+        backgroundColor: "#111",
+        padding: { x: 20, y: 10 }
     }).setOrigin(0.5);
 
-    const saveBtn = scene.add.text(cx + 90, cy + 70, "SAVE", {
+    const saveBtn = scene.add.text(cx + 100, cy + 90, "SAVE", {
         fontSize: "22px",
         color: "#00ff00",
         backgroundColor: "#222",
         padding: { x: 10, y: 5 }
     }).setOrigin(0.5).setInteractive();
 
-    const returnBtn = scene.add.text(cx - 90, cy + 70, "RETURN", {
-        fontSize: "22px",
-        color: "#ff4444",
-        backgroundColor: "#222",
-        padding: { x: 10, y: 5 }
-    }).setOrigin(0.5).setInteractive();
+    let returnBtn = null;
+
+    if (!gameOver) {
+        returnBtn = scene.add.text(cx - 100, cy + 90, "RETURN", {
+            fontSize: "22px",
+            color: "#ff4444",
+            backgroundColor: "#222",
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5).setInteractive();
+    }
 
     const closeUI = () => {
-
         bg.destroy();
         title.destroy();
         text.destroy();
         saveBtn.destroy();
-        returnBtn.destroy();
+        if (returnBtn) returnBtn.destroy();
 
         scene.gameLocked = false;
     };
@@ -68,64 +76,71 @@ export function showSaveUI(scene) {
         if (!inputText) return;
 
         try {
-
             await fetch(`${API_URL}/score`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     playerName: inputText,
                     score: scene.score
                 })
             });
-
         } catch (err) {
             console.error(err);
         }
 
-        // =====================
-        // FULL RESET
-        // =====================
-
+       // RESET GAME
         scene.score = 0;
         scene.scoreText.setText("0");
 
-        // click upgrades
-        scene.clickIndex = 0;
+        // -------------------------
+        // RESET FINGERS SYSTEM (IMPORTANT)
+        // -------------------------
+        scene.fingers = 10;
+        scene.fingerLock = false;
 
-        // multiplier
+        // -------------------------
+        // RESET CLICK SYSTEM
+        // -------------------------
+        scene.clickIndex = 0;
         scene.multiplierIndex = 0;
         scene.clickMultiplier = 1;
+        scene.clickTimes = [];
 
-        // employees
+        // -------------------------
+        // RESET EMPLOYEES
+        // -------------------------
         resetEmployees(scene);
 
-        // BUTTONS RESET
+        // -------------------------
+        // RESET UI BUTTONS
+        // -------------------------
         const next = clickUpgrades[1];
 
         scene.upgradeBtn.setText(
-            next
-                ? `UPGRADE CLICK\n${next.cost}`
-                : "MAX"
+            next ? `UPGRADE CLICK\n${next.cost}c` : "MAX"
         );
 
-        scene.empBtn.setText("EMPLOYEE\n300");
+        scene.empBtn.setText("EMPLOYEE\n300c");
+        if (scene.empMultBtn) scene.empMultBtn.setVisible(false).disableInteractive();
 
         scene.speedBtn.setVisible(false).disableInteractive();
-
         scene.multBtn.setVisible(false).disableInteractive();
 
-        // cleanup
+        // -------------------------
+        // CLEAN INPUT LISTENER
+        // -------------------------
         scene.input.keyboard.off("keydown", keyHandler);
 
+        // -------------------------
+        // CLOSE UI
+        // -------------------------
         closeUI();
     });
 
-    returnBtn.on("pointerdown", () => {
-
-        scene.input.keyboard.off("keydown", keyHandler);
-
-        closeUI();
-    });
+    if (returnBtn) {
+        returnBtn.on("pointerdown", () => {
+            scene.input.keyboard.off("keydown", keyHandler);
+            closeUI();
+        });
+    }
 }

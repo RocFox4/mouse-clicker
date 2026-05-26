@@ -2,17 +2,21 @@ import GameScene from "./scenes/GameScene.js";
 
 const config = {
     type: Phaser.AUTO,
-
     parent: "game-container",
+
+    width: window.innerWidth,
+    height: window.innerHeight,
 
     scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 1000,
-        height: 600
+        autoCenter: Phaser.Scale.CENTER_BOTH
     },
 
-    backgroundColor: "#2d2d2d",
+    render: {
+        antialias: true,
+        pixelArt: false,
+        roundPixels: false
+    },
 
     scene: [GameScene]
 };

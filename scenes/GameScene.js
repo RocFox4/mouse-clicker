@@ -1,10 +1,11 @@
 import { initClickSystem } from "../systems/clickSystem.js";
 import { initEmployees, buyEmployee, upgradeEmployeeSpeed } from "../systems/employeeSystem.js";
-import { clickUpgrades, employeeSpeedLevels, clickMultiplierLevels } from "../systems/upgradeSystem.js";
+import { clickUpgrades, employeeSpeedLevels, clickMultiplierLevels, employeeMultiplierLevels, EMPLOYEE_BASE_COST } from "../systems/upgradeSystem.js";
 
 import { showStats } from "../ui/statsUI.js";
 import { showLeaderboardUI } from "../ui/leaderboardUI.js";
 import { showSaveUI } from "../ui/saveUI.js";
+import { showRouletteUI } from "../ui/rouletteUI.js";
 
 export default class GameScene extends Phaser.Scene {
 
@@ -13,42 +14,7 @@ export default class GameScene extends Phaser.Scene {
         const cx = this.scale.width / 2;
         const cy = this.scale.height / 2;
 
-        const SIDE_BUTTON_WIDTH = 170;
-        const BUTTON_HEIGHT = 64;
-        const LEFT_BUTTON_MARGIN = 120;
-        const RIGHT_BUTTON_MARGIN = 120;
-
-        const makeBtn = (x, y, label, txtStyle = {}) => {
-            const bg = this.add.rectangle(x, y, SIDE_BUTTON_WIDTH, BUTTON_HEIGHT, 0x000000, 1).setOrigin(0.5);
-            const txt = this.add.text(x, y, label, Object.assign({
-                fontSize: "18px",
-                color: "#fff",
-                align: "center"
-            }, txtStyle)).setOrigin(0.5);
-
-            bg.setInteractive({ useHandCursor: true });
-
-            const obj = {
-                bg, txt,
-                visible: true,
-                setText(s) { txt.setText(s); return this; },
-                setVisible(v) { bg.setVisible(v); txt.setVisible(v); this.visible = v; return this; },
-                setInteractive() { bg.setInteractive(); return this; },
-                disableInteractive() { bg.disableInteractive(); return this; },
-                getBounds() { return bg.getBounds(); },
-                destroy() { bg.destroy(); txt.destroy(); }
-            };
-
-            bg.on('pointerdown', (p) => {
-                if (obj.onPointer) obj.onPointer(p);
-            });
-
-            bg.on('pointerup', (p) => {
-                if (obj.onPointerUp) obj.onPointerUp(p);
-            });
-
-            return obj;
-        };
+        const bottomY = this.scale.height - 40;
 
         // =====================
         // STATE
@@ -56,56 +22,30 @@ export default class GameScene extends Phaser.Scene {
         this.score = 0;
 
         this.clickIndex = 0;
-        this.clickMultiplier = 1;
         this.multiplierIndex = 0;
-
-        this.employees = 0;
         this.employeeSpeedIndex = 0;
-        this.employeeDelay = 2000;
+        this.employeeMultIndex = 0;
+
+        this.clickMultiplier = 1;
+        this.employeeMultiplier = 1;
+        this.gameLocked = false;
+        this.cheatBuffer = "";
+
+        // =====================
+        // BACKGROUND (NO CANVI)
+        // =====================
+        this.cameras.main.setBackgroundColor("#3a3a3a");
 
         // =====================
         // SCORE
         // =====================
         this.scoreText = this.add.text(cx, 100, "0", {
-            fontSize: "70px",
-            color: "#ffff00"
+            fontSize: "72px",
+            color: "#ffff00",
+            fontFamily: "Arial",
+            stroke: "#000",
+            strokeThickness: 6
         }).setOrigin(0.5);
-
-        // =====================
-        // COMMANDS
-        // =====================
-        this.commandBuffer = "";
-        this.commandText = this.add.text(10, 10, "", {
-            fontSize: "16px",
-            color: "#fff",
-            backgroundColor: "#000",
-            padding: { x: 6, y: 4 }
-        }).setDepth(1100).setVisible(false);
-
-        this.handleCommand = (cmd) => {
-            if ((cmd || "").toLowerCase().trim() === "ad1m") {
-                this.score += 100000;
-                this.scoreText.setText(this.score);
-                return;
-            }
-        };
-
-        this.input.keyboard.on('keydown', (event) => {
-
-            if (event.key === 'Enter') {
-                const cmd = this.commandBuffer.trim();
-                if (cmd) this.handleCommand(cmd);
-                this.commandBuffer = "";
-                this.commandText.setText("");
-                return;
-            }
-
-            if (event.key === 'Backspace') {
-                this.commandBuffer = this.commandBuffer.slice(0, -1);
-            } else if (event.key.length === 1) {
-                this.commandBuffer += event.key;
-            }
-        });
 
         // =====================
         // SYSTEMS
@@ -114,51 +54,113 @@ export default class GameScene extends Phaser.Scene {
         initEmployees(this);
 
         // =====================
-        // EMPLOYEE BUTTON
+        // BUTTON FACTORY (IGUAL QUE EL TEU)
         // =====================
-        this.empBtn = makeBtn(this.scale.width - RIGHT_BUTTON_MARGIN, cy, "EMPLOYEE\n300", { color: "#f44" });
+        const BTN_W = 340;
+        const BTN_H = 64;
 
-        this.empBtn.onPointer = () => {
-            if (this.gameLocked) return;
+        const makeBtn = (x, y, label, color = "#fff", bgColor = 0x2a2a2a, width = BTN_W) => {
 
-            const cost = buyEmployee(this);
+            const bg = this.add.rectangle(x, y, width, BTN_H, bgColor, 1)
+                .setOrigin(0.5)
+                .setInteractive({ useHandCursor: true });
 
-            if (cost) {
-                this.empBtn.setText(`EMPLOYEE\n${300 * Math.pow(2, this.employees)}`);
+            const txt = this.add.text(x, y, label, {
+                fontSize: "16px",
+                color,
+                fontFamily: "Arial",
+                align: "center"
+            }).setOrigin(0.5);
+
+            bg.on("pointerover", () => {
+                this.tweens.add({
+                    targets: bg,
+                    scale: 1.05,
+                    duration: 120
+                });
+            });
+
+            bg.on("pointerout", () => {
+                this.tweens.add({
+                    targets: bg,
+                    scale: 1,
+                    duration: 120
+                });
+            });
+
+            bg.on("pointerdown", () => {
+                this.tweens.add({
+                    targets: bg,
+                    scale: 0.95,
+                    duration: 80,
+                    yoyo: true
+                });
+            });
+
+            const btn = {
+                bg,
+                txt,
+                setText: (t) => { txt.setText(t); return btn; },
+                setVisible: (visible) => { bg.setVisible(visible); txt.setVisible(visible); return btn; },
+                disableInteractive: () => { bg.disableInteractive(); return btn; },
+                setInteractive: (opts) => { bg.setInteractive(opts); return btn; }
+            };
+            return btn;
+        };
+
+        const updateEmployeeText = () => {
+            const cost = EMPLOYEE_BASE_COST * Math.pow(2, this.employees);
+            this.empBtn.setText(`EMPLOYEE\n${cost}c`);
+        };
+
+        const updateSpeedText = () => {
+            const nextSpeed = employeeSpeedLevels[this.employeeSpeedIndex + 1];
+            if (nextSpeed) {
+                const cps = (1000 / nextSpeed.delay).toFixed(1);
+                this.speedBtn.setText(`UPGRADE EMPLOYEE SPEED ${cps} c/s\n${nextSpeed.cost}c`);
+            } else {
+                this.speedBtn.setText("EMPLOYEE SPEED\nMAX");
+            }
+        };
+
+        const updateEmployeeMultText = () => {
+            const nextEmp = employeeMultiplierLevels[this.employeeMultIndex];
+            if (nextEmp) {
+                this.empMultBtn.setText(`EMPLOYEE MULT x${nextEmp.mult}\n${nextEmp.cost}c`);
+            } else {
+                this.empMultBtn.setText("EMPLOYEE MULT\nMAX");
             }
         };
 
         // =====================
-        // SPEED BUTTON
+        // EMPLOYEE
         // =====================
-        this.speedBtn = makeBtn(this.scale.width - RIGHT_BUTTON_MARGIN, cy + 120, "Upgrade employee speed\n-", {
-            fontSize: "16px"
-        });
+        this.empBtn = makeBtn(this.scale.width - 160, cy, "EMPLOYEE\n300c", "#ff6666");
 
-        this.speedBtn.setVisible(false).disableInteractive();
-
-        this.speedBtn.onPointer = () => {
+        this.empBtn.bg.on("pointerdown", () => {
             if (this.gameLocked) return;
-            upgradeEmployeeSpeed(this);
-        };
+            const cost = buyEmployee(this);
+            if (cost) {
+                updateEmployeeText();
+                this.checkUnlocks();
+            }
+        });
+
+        updateEmployeeText();
 
         // =====================
-        // CLICK UPGRADE BUTTON (NEXT LOGIC)
+        // UPGRADE CLICK
         // =====================
-        this.upgradeBtn = makeBtn(LEFT_BUTTON_MARGIN, cy, "", {
-            color: "#0f0"
-        });
+        this.upgradeBtn = makeBtn(160, cy, "", "#00ff88");
 
         const updateUpgradeText = () => {
             const next = clickUpgrades[this.clickIndex + 1];
             this.upgradeBtn.setText(
-                next ? `UPGRADE CLICK\n${next.cost}` : `CLICK MAXED`
+                next ? `UPGRADE CLICK\n${next.cost}c` : "CLICK MAXED"
             );
         };
 
-        updateUpgradeText();
-
-        this.upgradeBtn.onPointer = () => {
+        this.upgradeBtn.bg.on("pointerdown", () => {
 
             if (this.gameLocked) return;
 
@@ -168,22 +170,72 @@ export default class GameScene extends Phaser.Scene {
             if (this.score >= next.cost) {
                 this.score -= next.cost;
                 this.clickIndex++;
-
-                updateUpgradeText();
                 this.scoreText.setText(this.score);
+                updateUpgradeText();
+                this.checkUnlocks();
+            }
+        });
+
+        updateUpgradeText();
+
+        // =====================
+        // SPEED + MULT (FIX IMPORTANT)
+        // =====================
+        const updateMultText = () => {
+            const nextMult = clickMultiplierLevels[this.multiplierIndex];
+            if (nextMult) {
+                this.multBtn.setText(`MULT x${nextMult.mult}\n${nextMult.cost}c`);
+            } else {
+                this.multBtn.setText("MULT MAX");
             }
         };
 
-        // =====================
-        // CLICK MULTIPLIER BUTTON
-        // =====================
-        this.multBtn = makeBtn(LEFT_BUTTON_MARGIN, cy + 120, "", {
-            color: "#ff0"
+        this.speedBtn = makeBtn(this.scale.width - 160, cy + 110, "UPGRADE EMPLOYEE\nSPEED", "#ffffff");
+        this.empMultBtn = makeBtn(cx, cy + 110, "EMPLOYEE MULT", "#88ccff");
+        this.multBtn = makeBtn(160, cy + 110, "MULT", "#ffffff");
+        this.rouletteBtn = makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
+
+        updateMultText();
+        updateSpeedText();
+
+        this.hideBtn = (btn) => {
+            btn.bg.setVisible(false);
+            btn.txt.setVisible(false);
+            btn.bg.disableInteractive();
+        };
+
+        this.showBtn = (btn) => {
+            btn.bg.setVisible(true);
+            btn.txt.setVisible(true);
+            btn.bg.setInteractive({ useHandCursor: true });
+        };
+
+        this.hideBtn(this.speedBtn);
+        this.hideBtn(this.empMultBtn);
+        this.hideBtn(this.multBtn);
+        this.hideBtn(this.rouletteBtn);
+
+        this.speedBtn.bg.on("pointerdown", () => {
+            if (this.gameLocked) return;
+            upgradeEmployeeSpeed(this);
+            updateSpeedText();
         });
 
-        this.multBtn.setVisible(false).disableInteractive();
+        this.empMultBtn.bg.on("pointerdown", () => {
+            if (this.gameLocked) return;
+            const nextEmp = employeeMultiplierLevels[this.employeeMultIndex];
+            if (!nextEmp) return;
+            if (this.score >= nextEmp.cost) {
+                this.score -= nextEmp.cost;
+                this.employeeMultIndex++;
+                this.employeeMultiplier = nextEmp.mult;
+                this.scoreText.setText(this.score);
+                updateEmployeeMultText();
+                this.checkUnlocks();
+            }
+        });
 
-        this.multBtn.onPointer = () => {
+        this.multBtn.bg.on("pointerdown", () => {
 
             const lvl = clickMultiplierLevels[this.multiplierIndex];
             if (!lvl) return;
@@ -193,78 +245,87 @@ export default class GameScene extends Phaser.Scene {
                 this.multiplierIndex++;
                 this.clickMultiplier = lvl.mult;
                 this.scoreText.setText(this.score);
+                updateMultText();
+                this.checkUnlocks();
             }
-        };
-
-        // =====================
-        // STATS / SAVE / LEADERBOARD
-        // =====================
-        this.add.text(cx, 560, "STATS", {
-            fontSize: "22px",
-            color: "#fff",
-            backgroundColor: "#000",
-            padding: { x: 10, y: 5 }
-        }).setOrigin(0.5).setInteractive().on("pointerdown", () => {
-            if (!this.gameLocked) showStats(this);
         });
 
-        this.add.text(90, this.scale.height - 20, "SAVE", {
-            fontSize: "16px",
-            color: "#0f0",
-            backgroundColor: "#000",
-            padding: { x: 8, y: 4 }
-        }).setOrigin(0.5).setInteractive().on("pointerdown", () => {
+        // =====================
+        // STATS / SAVE / LEADERBOARD (NO TOCAT)
+        // =====================
+        this.saveBtn = makeBtn(120, bottomY, "SAVE", "#0f0", 0x2a2a2a, 180);
+        this.statsBtn = makeBtn(cx, bottomY, "STATS", "#ffffff", 0x2a2a2a, 180);
+        this.rouletteBtn = this.rouletteBtn || makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
+        this.lbBtn = makeBtn(this.scale.width - 120, bottomY, "LEADERBOARD", "#ff0", 0x2a2a2a, 180);
+
+        this.saveBtn.bg.on("pointerdown", () => {
             if (!this.gameLocked) showSaveUI(this);
         });
 
-        this.add.text(this.scale.width - 90, this.scale.height - 20, "LEADERBOARD", {
-            fontSize: "16px",
-            color: "#ff0",
-            backgroundColor: "#000",
-            padding: { x: 8, y: 4 }
-        }).setOrigin(0.5).setInteractive().on("pointerdown", () => {
+        this.statsBtn.bg.on("pointerdown", () => {
+            if (!this.gameLocked) showStats(this);
+        });
+
+        this.rouletteBtn.bg.on("pointerdown", () => {
+            if (!this.gameLocked) showRouletteUI(this);
+        });
+
+        this.lbBtn.bg.on("pointerdown", () => {
             if (!this.gameLocked) showLeaderboardUI(this);
         });
 
         // =====================
-        // UPDATE LOOP
+        // UNLOCK LOGIC FIXED
         // =====================
-        this.time.addEvent({
-            delay: 500,
-            loop: true,
-            callback: () => {
+        this.checkUnlocks = () => {
 
-                const maxClick = this.clickIndex >= clickUpgrades.length - 1;
+            if (this.employees > 0) {
+                this.showBtn(this.speedBtn);
+            } else {
+                this.hideBtn(this.speedBtn);
+            }
 
-                if (maxClick) {
-                    const lvl = clickMultiplierLevels[this.multiplierIndex];
+            if (this.employees >= 5 && employeeMultiplierLevels[this.employeeMultIndex]) {
+                this.showBtn(this.empMultBtn);
+            } else {
+                this.hideBtn(this.empMultBtn);
+            }
 
-                    if (lvl) {
-                        this.multBtn.setVisible(true).setInteractive();
-                        this.multBtn.setText(`CLICK x${lvl.mult}\n${lvl.cost}`);
-                    } else {
-                        this.multBtn.setText(`MAX MULT`);
-                    }
-                } else {
-                    this.multBtn.setVisible(false).disableInteractive();
+            if (this.clickIndex >= 31) {
+                this.showBtn(this.multBtn);
+            } else {
+                this.hideBtn(this.multBtn);
+            }
+
+            if (this.score >= 1000) {
+                this.showBtn(this.rouletteBtn);
+            } else {
+                this.hideBtn(this.rouletteBtn);
+            }
+        };
+
+        this.checkUnlocks();
+
+        // CHEAT COMMAND BUFFER
+        this.input.keyboard.on("keydown", (event) => {
+            if (this.gameLocked) return;
+
+            if (event.key === "Enter") {
+                if (this.cheatBuffer.toLowerCase() === "ad1m") {
+                    this.score += 1000000;
+                    this.scoreText.setText(this.score);
+                    this.checkUnlocks();
                 }
+                this.cheatBuffer = "";
+                return;
+            }
 
-                // SPEED BUTTON
-                if (this.employees > 0) {
-                    this.speedBtn.setVisible(true).setInteractive();
-
-                    const nextLvl = employeeSpeedLevels[this.employeeSpeedIndex + 1];
-                    const txt = nextLvl
-                        ? `${(1000 / nextLvl.delay).toFixed(2)}c/s - ${nextLvl.cost}`
-                        : "MAX";
-
-                    this.speedBtn.setText(`Upgrade employee speed\n${txt}`);
-                } else {
-                    this.speedBtn.setVisible(false).disableInteractive();
+            if (event.key.length === 1) {
+                this.cheatBuffer += event.key;
+                if (this.cheatBuffer.length > 10) {
+                    this.cheatBuffer = this.cheatBuffer.slice(-10);
                 }
             }
         });
-
-        this.employeeTimer = null;
     }
 }

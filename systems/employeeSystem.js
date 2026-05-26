@@ -6,6 +6,8 @@ export function initEmployees(scene) {
 
     scene.employeeSpeedIndex = 0;
 
+    scene.employeeMultiplier = 1;
+
     scene.employeeDelay = employeeSpeedLevels[0].delay;
 
     scene.employeeTimer = null;

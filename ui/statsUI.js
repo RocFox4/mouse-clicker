@@ -1,4 +1,4 @@
-import { clickUpgrades, employeeSpeedLevels } from "../systems/upgradeSystem.js";
+import { clickUpgrades, employeeSpeedLevels, employeeMultiplierLevels } from "../systems/upgradeSystem.js";
 
 export function showStats(scene) {
 
@@ -30,7 +30,12 @@ export function showStats(scene) {
 
     const nextSpeed = employeeSpeedLevels?.[scene.employeeSpeedIndex + 1];
     const nextInfo = nextSpeed
-        ? `${(1000 / nextSpeed.delay).toFixed(2)} c/s (cost ${nextSpeed.cost})`
+        ? `${(1000 / nextSpeed.delay).toFixed(2)} c/s (cost ${nextSpeed.cost}c)`
+        : "MAX";
+
+    const nextEmpMult = employeeMultiplierLevels?.[scene.employeeMultIndex];
+    const nextEmpMultInfo = nextEmpMult
+        ? `x${nextEmpMult.mult} (cost ${nextEmpMult.cost}c)`
         : "MAX";
 
     // =====================
@@ -56,9 +61,11 @@ MULTIPLIER: x${scene.clickMultiplier || 1}
 LEVEL: ${scene.clickIndex}
 
 EMPLOYEES: ${employees}
+EMPLOYEE MULT: x${scene.employeeMultiplier || 1}
 EMPLOYEE CPS: ${empCpsPerEmployee.toFixed(2)}
 GLOBAL CPS: ${empCpsGlobal.toFixed(2)}
 
+NEXT EMP MULT: ${nextEmpMultInfo}
 NEXT SPEED: ${nextInfo}
 SPEED LEVEL: ${scene.employeeSpeedIndex}
 `, {
