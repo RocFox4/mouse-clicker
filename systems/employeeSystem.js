@@ -1,91 +1,72 @@
 import { EMPLOYEE_BASE_COST, employeeSpeedLevels } from "./upgradeSystem.js";
+import { showFloatingText } from "../ui/floatingText.js";
 
 export function initEmployees(scene) {
-
     scene.employees = 0;
-
     scene.employeeSpeedIndex = 0;
-
     scene.employeeMultiplier = 1;
-
     scene.employeeDelay = employeeSpeedLevels[0].delay;
-
     scene.employeeTimer = null;
 
     startEmployeeLoop(scene);
 }
 
-// =====================
-// RESET EMPLOYEES
-// =====================
 export function resetEmployees(scene) {
-
     scene.employees = 0;
-
     scene.employeeSpeedIndex = 0;
-
     scene.employeeDelay = employeeSpeedLevels[0].delay;
 
     if (scene.employeeTimer) {
         scene.employeeTimer.remove(false);
+        scene.employeeTimer = null;
     }
 
     startEmployeeLoop(scene);
 }
 
 // =====================
-// START LOOP
+// LOOP PRINCIPAL
 // =====================
 function startEmployeeLoop(scene) {
 
+    if (!scene || !scene.time) return;
+
+    // KILL HARD (importantíssim)
     if (scene.employeeTimer) {
         scene.employeeTimer.remove(false);
+        scene.employeeTimer.destroy?.(); // extra seguretat
+        scene.employeeTimer = null;
     }
 
+    const delay = scene.employeeDelay;
+
     scene.employeeTimer = scene.time.addEvent({
-        delay: scene.employeeDelay,
+        delay: delay,
         loop: true,
 
         callback: () => {
 
-            if (scene.employees <= 0) return;
+            if (!scene || scene.employees <= 0) return;
 
-            for (let i = 0; i < scene.employees; i++) {
+            const gain = scene.employees * (scene.employeeMultiplier || 1);
 
-                scene.time.delayedCall(i * 120, () => {
+            scene.score += gain;
 
-                    scene.score += 1;
-
-                    scene.scoreText.setText(scene.score);
-
-                    const cx = scene.scale.width / 2;
-                    const cy = scene.scale.height / 2 + 40;
-
-                    const offsetX = Phaser.Math.Between(-70, 70);
-                    const offsetY = Phaser.Math.Between(-70, 70);
-
-                    const txt = scene.add.text(
-                        cx + offsetX,
-                        cy + offsetY,
-                        `+1`,
-                        {
-                            fontSize: "22px",
-                            color: "#ff4444"
-                        }
-                    )
-                    .setOrigin(0.5)
-                    .setDepth(1000);
-
-                    scene.tweens.add({
-                        targets: txt,
-                        y: txt.y - 40,
-                        alpha: 0,
-                        duration: 700,
-                        onComplete: () => txt.destroy()
-                    });
-
-                });
+            if (scene.scoreText) {
+                scene.scoreText.setText(scene.score);
             }
+
+            const cx = scene.scale.width / 2;
+            const cy = scene.scale.height / 2 + 40;
+
+            showFloatingText(
+                scene,
+                cx + Phaser.Math.Between(-80, 80),
+                cy + Phaser.Math.Between(-50, 50),
+                `+${gain}`,
+                null,
+                "employee"
+            );
         }
     });
 }
@@ -95,15 +76,17 @@ function startEmployeeLoop(scene) {
 // =====================
 export function buyEmployee(scene) {
 
-    const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.10, scene.employees));
+    const cost = Math.round(
+        EMPLOYEE_BASE_COST * Math.pow(1.10, scene.employees)
+    );
 
     if (scene.score >= cost) {
-
         scene.score -= cost;
-
         scene.employees++;
 
-        scene.scoreText.setText(scene.score);
+        if (scene.scoreText && scene.scoreText.setText) {
+            scene.scoreText.setText(scene.score);
+        }
 
         return cost;
     }
@@ -116,19 +99,18 @@ export function buyEmployee(scene) {
 // =====================
 export function upgradeEmployeeSpeed(scene) {
 
-    const next = employeeSpeedLevels[scene.employeeSpeedIndex + 1];
-
+    const next = employeeSpeedLevels?.[scene.employeeSpeedIndex + 1];
     if (!next) return;
 
     if (scene.score >= next.cost) {
 
         scene.score -= next.cost;
-
         scene.employeeSpeedIndex++;
-
         scene.employeeDelay = next.delay;
 
-        scene.scoreText.setText(scene.score);
+        if (scene.scoreText && scene.scoreText.setText) {
+            scene.scoreText.setText(scene.score);
+        }
 
         startEmployeeLoop(scene);
     }

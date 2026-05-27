@@ -13,7 +13,6 @@ export default class GameScene extends Phaser.Scene {
 
         const cx = this.scale.width / 2;
         const cy = this.scale.height / 2;
-
         const bottomY = this.scale.height - 40;
 
         // =====================
@@ -31,8 +30,15 @@ export default class GameScene extends Phaser.Scene {
         this.gameLocked = false;
         this.cheatBuffer = "";
 
+        // IMPORTANT
+        this.setScore = (value) => {
+            this.score = value;
+            this.scoreText.setText(this.score);
+            this.checkUnlocks();
+        };
+
         // =====================
-        // BACKGROUND (NO CANVI)
+        // BACKGROUND
         // =====================
         this.cameras.main.setBackgroundColor("#3a3a3a");
 
@@ -54,7 +60,7 @@ export default class GameScene extends Phaser.Scene {
         initEmployees(this);
 
         // =====================
-        // BUTTON FACTORY (IGUAL QUE EL TEU)
+        // BUTTON FACTORY
         // =====================
         const BTN_W = 340;
         const BTN_H = 64;
@@ -72,54 +78,36 @@ export default class GameScene extends Phaser.Scene {
                 align: "center"
             }).setOrigin(0.5);
 
-            bg.on("pointerover", () => {
-                this.tweens.add({
-                    targets: bg,
-                    scale: 1.05,
-                    duration: 120
-                });
-            });
-
-            bg.on("pointerout", () => {
-                this.tweens.add({
-                    targets: bg,
-                    scale: 1,
-                    duration: 120
-                });
-            });
-
-            bg.on("pointerdown", () => {
-                this.tweens.add({
-                    targets: bg,
-                    scale: 0.95,
-                    duration: 80,
-                    yoyo: true
-                });
-            });
-
             const btn = {
                 bg,
                 txt,
                 setText: (t) => { txt.setText(t); return btn; },
-                setVisible: (visible) => { bg.setVisible(visible); txt.setVisible(visible); return btn; },
-                disableInteractive: () => { bg.disableInteractive(); return btn; },
-                setInteractive: (opts) => { bg.setInteractive(opts); return btn; }
+                setVisible: (v) => { bg.setVisible(v); txt.setVisible(v); return btn; }
             };
+
             return btn;
         };
 
+        // =====================
+        // UPDATE TEXTS
+        // =====================
+
         const updateEmployeeText = () => {
-            const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.10, this.employees));
+            const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.20, this.employees || 0));
             this.empBtn.setText(`EMPLOYEE\n${cost}c`);
         };
 
         const updateSpeedText = () => {
             const nextSpeed = employeeSpeedLevels[this.employeeSpeedIndex + 1];
+
             if (nextSpeed) {
                 const cps = (1000 / nextSpeed.delay).toFixed(1);
-                this.speedBtn.setText(`UPGRADE EMPLOYEE SPEED ${cps} c/s\n${nextSpeed.cost}c`);
+
+                this.speedBtn.txt.setText(
+                    `UPGRADE EMPLOYEE SPEED\n${cps} c/s\n${nextSpeed.cost}c`
+                );
             } else {
-                this.speedBtn.setText("EMPLOYEE SPEED\nMAX");
+                this.speedBtn.txt.setText("EMPLOYEE SPEED\nMAX");
             }
         };
 
@@ -133,14 +121,17 @@ export default class GameScene extends Phaser.Scene {
         };
 
         // =====================
-        // EMPLOYEE
+        // EMPLOYEE BUTTON
         // =====================
         this.empBtn = makeBtn(this.scale.width - 160, cy, "EMPLOYEE\n300c", "#ff6666");
 
         this.empBtn.bg.on("pointerdown", () => {
             if (this.gameLocked) return;
+
             const cost = buyEmployee(this);
-            if (cost) {
+
+            if (cost !== null) {
+                this.setScore(this.score);
                 updateEmployeeText();
                 this.checkUnlocks();
             }
@@ -149,28 +140,24 @@ export default class GameScene extends Phaser.Scene {
         updateEmployeeText();
 
         // =====================
-        // UPGRADE CLICK
+        // CLICK UPGRADE
         // =====================
         this.upgradeBtn = makeBtn(160, cy, "", "#00ff88");
 
         const updateUpgradeText = () => {
             const next = clickUpgrades[this.clickIndex + 1];
-            this.upgradeBtn.setText(
-                next ? `UPGRADE CLICK\n${next.cost}c` : "CLICK MAXED"
-            );
+            this.upgradeBtn.setText(next ? `UPGRADE CLICK\n${next.cost}c` : "CLICK MAXED");
         };
 
         this.upgradeBtn.bg.on("pointerdown", () => {
-
             if (this.gameLocked) return;
 
             const next = clickUpgrades[this.clickIndex + 1];
             if (!next) return;
 
             if (this.score >= next.cost) {
-                this.score -= next.cost;
+                this.setScore(this.score - next.cost);
                 this.clickIndex++;
-                this.scoreText.setText(this.score);
                 updateUpgradeText();
                 this.checkUnlocks();
             }
@@ -179,25 +166,32 @@ export default class GameScene extends Phaser.Scene {
         updateUpgradeText();
 
         // =====================
-        // SPEED + MULT (FIX IMPORTANT)
+        // SPEED + MULT
         // =====================
-        const updateMultText = () => {
-            const nextMult = clickMultiplierLevels[this.multiplierIndex];
-            if (nextMult) {
-                this.multBtn.setText(`CLICK MULT x${nextMult.mult}\n${nextMult.cost}c`);
-            } else {
-                this.multBtn.setText("CLICK MULT MAX");
+        this.speedBtn = makeBtn(this.scale.width - 160, cy + 110, "UPGRADE EMPLOYEE SPEED");
+        this.empMultBtn = makeBtn(this.scale.width - 160, cy + 220, "EMPLOYEE MULT");
+        this.multBtn = makeBtn(160, cy + 110, "CLICKMULT");
+
+        // 🔥🔥🔥 BOTÓ DE SPEED ARREGLAT 🔥🔥🔥
+        this.speedBtn.bg.on("pointerdown", () => {
+            if (this.gameLocked) return;
+
+            const next = employeeSpeedLevels[this.employeeSpeedIndex + 1];
+            if (!next) return;
+
+            if (this.score >= next.cost) {
+                upgradeEmployeeSpeed(this);
+                updateSpeedText();
+                this.checkUnlocks();
             }
-        };
+        });
 
-        this.speedBtn = makeBtn(this.scale.width - 160, cy + 110, "UPGRADE EMPLOYEE\nSPEED", "#ffffff");
-        this.empMultBtn = makeBtn(this.scale.width - 160, cy + 220, "UPGRADE EMPLOYEE MULT", "#88ccff");
-        this.multBtn = makeBtn(160, cy + 110, "CLICKMULT", "#ffffff");
-        this.rouletteBtn = makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
-
-        updateMultText();
         updateSpeedText();
+        updateEmployeeMultText();
 
+        // =====================
+        // UNLOCK SYSTEM
+        // =====================
         this.hideBtn = (btn) => {
             btn.bg.setVisible(false);
             btn.txt.setVisible(false);
@@ -210,111 +204,48 @@ export default class GameScene extends Phaser.Scene {
             btn.bg.setInteractive({ useHandCursor: true });
         };
 
-        this.hideBtn(this.speedBtn);
-        this.hideBtn(this.empMultBtn);
-        this.hideBtn(this.multBtn);
-        this.hideBtn(this.rouletteBtn);
-
-        this.speedBtn.bg.on("pointerdown", () => {
-            if (this.gameLocked) return;
-            upgradeEmployeeSpeed(this);
-            updateSpeedText();
-        });
-
-        this.empMultBtn.bg.on("pointerdown", () => {
-            if (this.gameLocked) return;
-            const nextEmp = employeeMultiplierLevels[this.employeeMultIndex];
-            if (!nextEmp) return;
-            if (this.score >= nextEmp.cost) {
-                this.score -= nextEmp.cost;
-                this.employeeMultIndex++;
-                this.employeeMultiplier = nextEmp.mult;
-                this.scoreText.setText(this.score);
-                updateEmployeeMultText();
-                this.checkUnlocks();
-            }
-        });
-
-        this.multBtn.bg.on("pointerdown", () => {
-
-            const lvl = clickMultiplierLevels[this.multiplierIndex];
-            if (!lvl) return;
-
-            if (this.score >= lvl.cost) {
-                this.score -= lvl.cost;
-                this.multiplierIndex++;
-                this.clickMultiplier = lvl.mult;
-                this.scoreText.setText(this.score);
-                updateMultText();
-                this.checkUnlocks();
-            }
-        });
-
-        // =====================
-        // STATS / SAVE / LEADERBOARD (NO TOCAT)
-        // =====================
-        this.saveBtn = makeBtn(120, bottomY, "SAVE", "#0f0", 0x2a2a2a, 180);
-        this.statsBtn = makeBtn(cx, bottomY, "STATS", "#ffffff", 0x2a2a2a, 180);
-        this.rouletteBtn = this.rouletteBtn || makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
-        this.lbBtn = makeBtn(this.scale.width - 120, bottomY, "LEADERBOARD", "#ff0", 0x2a2a2a, 180);
-
-        this.saveBtn.bg.on("pointerdown", () => {
-            if (!this.gameLocked) showSaveUI(this);
-        });
-
-        this.statsBtn.bg.on("pointerdown", () => {
-            if (!this.gameLocked) showStats(this);
-        });
-
-        this.rouletteBtn.bg.on("pointerdown", () => {
-            if (!this.gameLocked) showRouletteUI(this);
-        });
-
-        this.lbBtn.bg.on("pointerdown", () => {
-            if (!this.gameLocked) showLeaderboardUI(this);
-        });
-
-        // =====================
-        // UNLOCK LOGIC FIXED
-        // =====================
         this.checkUnlocks = () => {
 
-            if (this.employees > 0) {
-                this.showBtn(this.speedBtn);
-            } else {
-                this.hideBtn(this.speedBtn);
-            }
+            if (this.employees > 0) this.showBtn(this.speedBtn);
+            else this.hideBtn(this.speedBtn);
 
-            if (this.employees >= 5 && employeeMultiplierLevels[this.employeeMultIndex]) {
-                this.showBtn(this.empMultBtn);
-            } else {
-                this.hideBtn(this.empMultBtn);
-            }
+            if (this.employees >= 5) this.showBtn(this.empMultBtn);
+            else this.hideBtn(this.empMultBtn);
 
-            if (this.clickIndex >= 31) {
-                this.showBtn(this.multBtn);
-            } else {
-                this.hideBtn(this.multBtn);
-            }
+            if (this.clickIndex >= 31) this.showBtn(this.multBtn);
+            else this.hideBtn(this.multBtn);
 
-            if (this.score >= 1000) {
-                this.showBtn(this.rouletteBtn);
-            } else {
-                this.hideBtn(this.rouletteBtn);
-            }
+            if (this.score >= 1000) this.showBtn(this.rouletteBtn);
+            else this.hideBtn(this.rouletteBtn);
         };
+
+        // =====================
+        // ROULETTE + UI
+        // =====================
+        this.rouletteBtn = makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
+        this.hideBtn(this.rouletteBtn);
+
+        this.saveBtn = makeBtn(120, bottomY, "SAVE", "#0f0", 0x2a2a2a, 180);
+        this.statsBtn = makeBtn(cx, bottomY, "STATS", "#fff", 0x2a2a2a, 180);
+        this.lbBtn = makeBtn(this.scale.width - 120, bottomY, "LEADERBOARD", "#ff0", 0x2a2a2a, 180);
+
+        this.saveBtn.bg.on("pointerdown", () => showSaveUI(this));
+        this.statsBtn.bg.on("pointerdown", () => showStats(this));
+        this.rouletteBtn.bg.on("pointerdown", () => showRouletteUI(this));
+        this.lbBtn.bg.on("pointerdown", () => showLeaderboardUI(this));
 
         this.checkUnlocks();
 
-        // CHEAT COMMAND BUFFER
+        // =====================
+        // CHEAT (NO TOCAT)
+        // =====================
         this.input.keyboard.on("keydown", (event) => {
+
             if (this.gameLocked) return;
 
             if (event.key === "Enter") {
                 if (this.cheatBuffer.toLowerCase() === "ad1m") {
-                    this.score += 1000000;
-                    this.scoreText.setText(this.score);
-                    this.checkUnlocks();
+                    this.setScore(this.score + 1000000);
                 }
                 this.cheatBuffer = "";
                 return;
