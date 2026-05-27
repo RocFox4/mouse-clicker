@@ -124,7 +124,11 @@ export const clickMultiplierLevels = [
 ];
 
 export const employeeMultiplierLevels = [
-    { mult: 2, cost: 10000, unlockEmployees: 5 }
+    { mult: 1, cost: 0, unlockEmployees: 5 },
+    { mult: 2, cost: 2000, unlockEmployees: 5 },
+    { mult: 3, cost: 4000, unlockEmployees: 5 },
+    { mult: 4, cost: 8000, unlockEmployees: 5 },
+    { mult: 5, cost: 16000, unlockEmployees: 5 },
 ];
 
 // employees base config

@@ -1,6 +1,12 @@
 import { initClickSystem } from "../systems/clickSystem.js";
 import { initEmployees, buyEmployee, upgradeEmployeeSpeed } from "../systems/employeeSystem.js";
-import { clickUpgrades, employeeSpeedLevels, clickMultiplierLevels, employeeMultiplierLevels, EMPLOYEE_BASE_COST } from "../systems/upgradeSystem.js";
+import {
+    clickUpgrades,
+    employeeSpeedLevels,
+    clickMultiplierLevels,
+    employeeMultiplierLevels,
+    EMPLOYEE_BASE_COST
+} from "../systems/upgradeSystem.js";
 
 import { showStats } from "../ui/statsUI.js";
 import { showLeaderboardUI } from "../ui/leaderboardUI.js";
@@ -11,26 +17,40 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
 
+        const minEmpleatsVaga = 10; // minim empleats per fer vaga
         const cx = this.scale.width / 2;
         const cy = this.scale.height / 2;
         const bottomY = this.scale.height - 40;
-
+        const chanceVaga = 0.025; // 2,5% cada check
+        const delayVaga = 100000; // cada 100 segons
         // =====================
         // STATE
         // =====================
         this.score = 0;
+        //vaga
+
+        this.strikeActive = false;
+        this.strikeClicks = 0;
+        this.strikeRequired = 0;
+        this.strikeLevel = 0;
 
         this.clickIndex = 0;
-        this.multiplierIndex = 0;
-        this.employeeSpeedIndex = 0;
-        this.employeeMultIndex = 0;
-
         this.clickMultiplier = 1;
-        this.employeeMultiplier = 1;
+
+        this.multiplierIndex = 0;
+
+        this.employeeSpeedIndex = 0;
+
+        // FIX IMPORTANT (clean multiplier system)
+        this.employeeMultIndex = 0;
+        this.employeeMultiplier = employeeMultiplierLevels[0].mult;
+
         this.gameLocked = false;
         this.cheatBuffer = "";
 
-        // IMPORTANT
+        // =====================
+        // SCORE SETTER
+        // =====================
         this.setScore = (value) => {
             this.score = value;
             this.scoreText.setText(this.score);
@@ -43,7 +63,7 @@ export default class GameScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor("#3a3a3a");
 
         // =====================
-        // SCORE
+        // SCORE TEXT
         // =====================
         this.scoreText = this.add.text(cx, 100, "0", {
             fontSize: "72px",
@@ -78,14 +98,12 @@ export default class GameScene extends Phaser.Scene {
                 align: "center"
             }).setOrigin(0.5);
 
-            const btn = {
+            return {
                 bg,
                 txt,
-                setText: (t) => { txt.setText(t); return btn; },
-                setVisible: (v) => { bg.setVisible(v); txt.setVisible(v); return btn; }
+                setText: (t) => { txt.setText(t); return this; },
+                setVisible: (v) => { bg.setVisible(v); txt.setVisible(v); return this; }
             };
-
-            return btn;
         };
 
         // =====================
@@ -102,7 +120,6 @@ export default class GameScene extends Phaser.Scene {
 
             if (nextSpeed) {
                 const cps = (1000 / nextSpeed.delay).toFixed(1);
-
                 this.speedBtn.txt.setText(
                     `UPGRADE EMPLOYEE SPEED\n${cps} c/s\n${nextSpeed.cost}c`
                 );
@@ -112,11 +129,14 @@ export default class GameScene extends Phaser.Scene {
         };
 
         const updateEmployeeMultText = () => {
-            const nextEmp = employeeMultiplierLevels[this.employeeMultIndex];
-            if (nextEmp) {
-                this.empMultBtn.setText(`EMPLOYEE MULT x${nextEmp.mult}\n${nextEmp.cost}c`);
+            const next = employeeMultiplierLevels[this.employeeMultIndex + 1];
+
+            if (next) {
+                this.empMultBtn.txt.setText(
+                    `EMPLOYEE MULT x${next.mult}\n${next.cost}c`
+                );
             } else {
-                this.empMultBtn.setText("EMPLOYEE MULT\nMAX");
+                this.empMultBtn.txt.setText("EMPLOYEE MULT\nMAX");
             }
         };
 
@@ -170,9 +190,10 @@ export default class GameScene extends Phaser.Scene {
         // =====================
         this.speedBtn = makeBtn(this.scale.width - 160, cy + 110, "UPGRADE EMPLOYEE SPEED");
         this.empMultBtn = makeBtn(this.scale.width - 160, cy + 220, "EMPLOYEE MULT");
-        this.multBtn = makeBtn(160, cy + 110, "CLICKMULT");
 
-        // 🔥🔥🔥 BOTÓ DE SPEED ARREGLAT 🔥🔥🔥
+        this.multBtn = makeBtn(160, cy + 110, "CLICK MULT");
+
+        // SPEED BUY
         this.speedBtn.bg.on("pointerdown", () => {
             if (this.gameLocked) return;
 
@@ -182,6 +203,27 @@ export default class GameScene extends Phaser.Scene {
             if (this.score >= next.cost) {
                 upgradeEmployeeSpeed(this);
                 updateSpeedText();
+                this.checkUnlocks();
+            }
+        });
+
+        // MULT BUY (FIXED)
+        this.empMultBtn.bg.on("pointerdown", () => {
+            if (this.gameLocked) return;
+
+            const next = employeeMultiplierLevels[this.employeeMultIndex + 1];
+            if (!next) return;
+
+            if (this.score >= next.cost) {
+
+                this.score -= next.cost;
+                this.employeeMultIndex++;
+
+                this.employeeMultiplier = next.mult;
+
+                this.setScore(this.score);
+
+                updateEmployeeMultText();
                 this.checkUnlocks();
             }
         });
@@ -217,10 +259,12 @@ export default class GameScene extends Phaser.Scene {
 
             if (this.score >= 1000) this.showBtn(this.rouletteBtn);
             else this.hideBtn(this.rouletteBtn);
+
+            
         };
 
         // =====================
-        // ROULETTE + UI
+        // UI BUTTONS
         // =====================
         this.rouletteBtn = makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
         this.hideBtn(this.rouletteBtn);
@@ -236,8 +280,50 @@ export default class GameScene extends Phaser.Scene {
 
         this.checkUnlocks();
 
+        //vaga
+        this.startStrike = () => {
+
+            if (this.strikeActive) return;
+
+            this.strikeActive = true;
+            this.strikeLevel++;
+
+            const base = 100;
+            this.strikeRequired = Math.min(500, base * this.strikeLevel);
+            this.strikeClicks = 0;
+
+
+            const remaining = this.strikeRequired - this.strikeClicks;
+
+            this.strikeText = this.add.text(
+                cx,
+                cy - 200,
+                `EMPLOYEES ARE ON STRIKE!\n${remaining} clicks left to end strike`,
+                {
+                    fontSize: "26px",
+                    color: "#ff4444",
+                    align: "center"
+                }
+            ).setOrigin(0.5);
+        };
+        //timer vaga
+        this.time.addEvent({
+            delay: delayVaga, 
+            loop: true,
+
+            callback: () => {
+
+                if (this.employees >= minEmpleatsVaga && !this.strikeActive) {
+
+                    if (Math.random() < chanceVaga) {
+                        this.startStrike();
+                    }
+                }
+            }
+        });
+
         // =====================
-        // CHEAT (NO TOCAT)
+        // CHEAT
         // =====================
         this.input.keyboard.on("keydown", (event) => {
 

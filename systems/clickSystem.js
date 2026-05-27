@@ -54,7 +54,58 @@ export function initClickSystem(scene) {
         const now = performance.now();
 
         if (scene.gameLocked) return;
+        //vaga
+        if (scene.strikeActive) {
 
+        scene.strikeClicks++;
+
+        const remaining = scene.strikeRequired - scene.strikeClicks;
+
+        if (scene.strikeText) {
+            scene.strikeText.setText(
+                `EMPLOYEES ARE ON STRIKE!\n${remaining} clicks left to end strike`
+            );
+        }
+
+        showFloatingText(
+            scene,
+            pointer.worldX,
+            pointer.worldY,
+            `+1 strike click!`,
+            "#ff4444"
+        );
+
+    if (scene.strikeClicks >= scene.strikeRequired) {
+
+        scene.strikeActive = false;
+
+        if (scene.strikeText) {
+            scene.strikeText.destroy();
+            scene.strikeText = null;
+        }
+
+        scene.strikeText = scene.add.text(
+            cx,
+            cy - 200,
+            "✔ EMPLOYEES BACK TO WORK!",
+            {
+                fontSize: "28px",
+                color: "#00ff00",
+                fontFamily: "Arial",
+                align: "center"
+            }
+        ).setOrigin(0.5);
+
+        scene.time.delayedCall(3000, () => {
+
+            if (scene.strikeText) {
+                scene.strikeText.destroy();
+                scene.strikeText = null;
+            }
+        });
+    }
+
+}
         // =====================
         // CPS TRACKING
         // =====================
@@ -133,8 +184,8 @@ export function initClickSystem(scene) {
         // =====================
         // FLOATING TEXT (UNCHANGED)
         // =====================
-        const cursorX = scene.fakeCursor?.x ?? pointer.worldX;
-        const cursorY = scene.fakeCursor?.y ?? pointer.worldY;
+        const cursorX = pointer.worldX;
+        const cursorY = pointer.worldY;
 
         showFloatingText(scene, cursorX, cursorY, `+${finalAdded}`, "#00ff00");
     });

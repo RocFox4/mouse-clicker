@@ -47,6 +47,7 @@ function startEmployeeLoop(scene) {
         callback: () => {
 
             if (!scene || scene.employees <= 0) return;
+            if (scene.strikeActive) return;
 
             const gain = scene.employees * (scene.employeeMultiplier || 1);
 
@@ -77,7 +78,7 @@ function startEmployeeLoop(scene) {
 export function buyEmployee(scene) {
 
     const cost = Math.round(
-        EMPLOYEE_BASE_COST * Math.pow(1.10, scene.employees)
+        EMPLOYEE_BASE_COST * Math.pow(1.20, scene.employees)
     );
 
     if (scene.score >= cost) {
@@ -114,4 +115,26 @@ export function upgradeEmployeeSpeed(scene) {
 
         startEmployeeLoop(scene);
     }
+}
+
+export function upgradeEmployeeMultiplier(scene) {
+
+    const next = employeeMultiplierLevels?.[scene.employeeMultIndex + 1];
+    if (!next) return false;
+
+    if (scene.score >= next.cost) {
+
+        scene.score -= next.cost;
+        scene.employeeMultIndex++;
+
+        scene.employeeMultiplier = next.mult;
+
+        if (scene.scoreText) {
+            scene.scoreText.setText(scene.score);
+        }
+
+        return true;
+    }
+
+    return false;
 }
