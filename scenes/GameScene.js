@@ -21,8 +21,8 @@ export default class GameScene extends Phaser.Scene {
         const cx = this.scale.width / 2;
         const cy = this.scale.height / 2;
         const bottomY = this.scale.height - 40;
-        const chanceVaga = 0.025; // 2,5% cada check
-        const delayVaga = 100000; // cada 100 segons
+        const chanceVaga = 0.075; // 7,5% cada check
+        const delayVaga = 60000; // cada 100 segons
         // =====================
         // STATE
         // =====================
