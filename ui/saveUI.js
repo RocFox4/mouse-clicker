@@ -37,9 +37,18 @@ export function showSaveUI(scene, gameOver = false) {
     }).setOrigin(0.5).setInteractive();
 
     let returnBtn = null;
+    let exitBtn = null;
 
     if (!gameOver) {
         returnBtn = scene.add.text(cx - 100, cy + 90, "RETURN", {
+            fontSize: "22px",
+            color: "#ff4444",
+            backgroundColor: "#222",
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5).setInteractive();
+    }
+    else {
+        exitBtn = scene.add.text(cx - 100, cy + 90, "EXIT", {
             fontSize: "22px",
             color: "#ff4444",
             backgroundColor: "#222",
@@ -53,7 +62,9 @@ export function showSaveUI(scene, gameOver = false) {
         text.destroy();
         saveBtn.destroy();
         if (returnBtn) returnBtn.destroy();
+        if (exitBtn) exitBtn.destroy();
 
+        scene.input.keyboard.off("keydown", keyHandler);
         scene.gameLocked = false;
     };
 
@@ -71,24 +82,7 @@ export function showSaveUI(scene, gameOver = false) {
 
     scene.input.keyboard.on("keydown", keyHandler);
 
-    saveBtn.on("pointerdown", async () => {
-
-        if (!inputText) return;
-
-        try {
-            await fetch(`${API_URL}/score`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    playerName: inputText,
-                    score: scene.score
-                })
-            });
-        } catch (err) {
-            console.error(err);
-        }
-
-       // RESET GAME
+    const resetGameState = () => {
         scene.score = 0;
         scene.scoreText.setText("0");
 
@@ -125,21 +119,39 @@ export function showSaveUI(scene, gameOver = false) {
 
         scene.speedBtn.setVisible(false).disableInteractive();
         scene.multBtn.setVisible(false).disableInteractive();
+    };
 
-        // -------------------------
-        // CLEAN INPUT LISTENER
-        // -------------------------
-        scene.input.keyboard.off("keydown", keyHandler);
+    saveBtn.on("pointerdown", async () => {
 
-        // -------------------------
-        // CLOSE UI
-        // -------------------------
+        if (!inputText) return;
+
+        try {
+            await fetch(`${API_URL}/score`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    playerName: inputText,
+                    score: scene.score
+                })
+            });
+        } catch (err) {
+            console.error(err);
+        }
+
+        resetGameState();
         closeUI();
     });
 
     if (returnBtn) {
         returnBtn.on("pointerdown", () => {
             scene.input.keyboard.off("keydown", keyHandler);
+            closeUI();
+        });
+    }
+
+    if (exitBtn) {
+        exitBtn.on("pointerdown", () => {
+            resetGameState();
             closeUI();
         });
     }

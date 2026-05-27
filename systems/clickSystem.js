@@ -1,5 +1,6 @@
 import { clickUpgrades } from "./upgradeSystem.js";
 import { showFloatingText } from "../ui/floatingText.js";
+import { showSaveUI } from "../ui/saveUI.js";
 
 export function initClickSystem(scene) {
 
@@ -44,8 +45,24 @@ export function initClickSystem(scene) {
         // finger system
         if (cps > CPS_LIMIT) {
 
-            scene.fingers = (scene.fingers ?? 10) - 1;
+            scene.fingers = Math.max(0, (scene.fingers ?? 10) - 1);
             scene.gameLocked = true;
+
+            if (scene.fingers <= 0) {
+                const msg = scene.add.text(cx, cy - 120,
+                    `you broke your last finger.\nGAME OVER.`,
+                    {
+                        fontSize: "28px",
+                        color: "#ff0000",
+                        backgroundColor: "#000",
+                        padding: { x: 10, y: 10 }
+                    }
+                ).setOrigin(0.5);
+
+                scene.time.delayedCall(2000, () => msg.destroy());
+                showSaveUI(scene, true);
+                return;
+            }
 
             const msg = scene.add.text(cx, cy - 120,
                 `you broke 1 finger.\n${scene.fingers} fingers left.`,
