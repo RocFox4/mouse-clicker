@@ -11,7 +11,7 @@ export function initClickSystem(scene) {
     const cy = scene.scale.height / 2;
 
     const button = scene.add.circle(cx, cy + 40, 90, 0x00aaff)
-        .setInteractive(); // ❗ NO useHandCursor
+        .setInteractive(); // make it interactive for clicks
 
     scene.mainClickButton = button;
 

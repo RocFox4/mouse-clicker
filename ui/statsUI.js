@@ -42,7 +42,7 @@ export function showStats(scene) {
     // BOX
     // =====================
     const boxWidth = 560;
-    const boxHeight = 300;
+    const boxHeight = 350;
     const DEPTH = 1000;
 
     const box = scene.add.rectangle(cx, cy, boxWidth, boxHeight, 0x000000, 0.9);
@@ -52,22 +52,17 @@ export function showStats(scene) {
     // TEXT
     // =====================
     const text = scene.add.text(cx, cy, `
-CLICK CURRENT LEVEL:
+CLICK CURRENT LEVEL ${scene.clickIndex}:
 VALUE: ${clickMin} - ${clickMax}
 PROBABILITY: ${Math.round(current.chance * 100)}%
+CLICK MULTIPLIER: x${scene.clickMultiplier || 1}
 
-MULTIPLIER: x${scene.clickMultiplier || 1}
-
-LEVEL: ${scene.clickIndex}
 
 EMPLOYEES: ${employees}
-EMPLOYEE MULT: x${scene.employeeMultiplier || 1}
+EMPLOYEE MULTIPLIER: x${scene.employeeMultiplier || 1}
 EMPLOYEE CPS: ${empCpsPerEmployee.toFixed(2)}
 GLOBAL CPS: ${empCpsGlobal.toFixed(2)}
 
-NEXT EMP MULT: ${nextEmpMultInfo}
-NEXT SPEED: ${nextInfo}
-SPEED LEVEL: ${scene.employeeSpeedIndex}
 `, {
         fontSize: "18px",
         color: "#fff",

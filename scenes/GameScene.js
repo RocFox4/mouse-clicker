@@ -109,7 +109,7 @@ export default class GameScene extends Phaser.Scene {
         };
 
         const updateEmployeeText = () => {
-            const cost = EMPLOYEE_BASE_COST * Math.pow(2, this.employees);
+            const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.10, this.employees));
             this.empBtn.setText(`EMPLOYEE\n${cost}c`);
         };
 
@@ -184,15 +184,15 @@ export default class GameScene extends Phaser.Scene {
         const updateMultText = () => {
             const nextMult = clickMultiplierLevels[this.multiplierIndex];
             if (nextMult) {
-                this.multBtn.setText(`MULT x${nextMult.mult}\n${nextMult.cost}c`);
+                this.multBtn.setText(`CLICK MULT x${nextMult.mult}\n${nextMult.cost}c`);
             } else {
-                this.multBtn.setText("MULT MAX");
+                this.multBtn.setText("CLICK MULT MAX");
             }
         };
 
         this.speedBtn = makeBtn(this.scale.width - 160, cy + 110, "UPGRADE EMPLOYEE\nSPEED", "#ffffff");
-        this.empMultBtn = makeBtn(cx, cy + 110, "EMPLOYEE MULT", "#88ccff");
-        this.multBtn = makeBtn(160, cy + 110, "MULT", "#ffffff");
+        this.empMultBtn = makeBtn(this.scale.width - 160, cy + 220, "UPGRADE EMPLOYEE MULT", "#88ccff");
+        this.multBtn = makeBtn(160, cy + 110, "CLICKMULT", "#ffffff");
         this.rouletteBtn = makeBtn(cx + 240, bottomY, "ROULETTE", "#ffa500", 0x2a2a2a, 180);
 
         updateMultText();

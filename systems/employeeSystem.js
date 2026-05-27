@@ -95,7 +95,7 @@ function startEmployeeLoop(scene) {
 // =====================
 export function buyEmployee(scene) {
 
-    const cost = EMPLOYEE_BASE_COST * Math.pow(2, scene.employees);
+    const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.10, scene.employees));
 
     if (scene.score >= cost) {
 
