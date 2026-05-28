@@ -1,6 +1,13 @@
 export function showFloatingText(scene, x, y, text, color = null, type = "click") {
+    if (!scene.fxPool) {
+        scene.fxPool = [];
+    }
 
-    if (!scene.fxPool) scene.fxPool = [];
+    // Limit pool size to prevent memory leaks
+    if (scene.fxPool.length > 50) {
+        const excess = scene.fxPool.splice(0, 10);
+        excess.forEach(t => t.destroy());
+    }
 
     let t = scene.fxPool.pop();
 
@@ -11,19 +18,17 @@ export function showFloatingText(scene, x, y, text, color = null, type = "click"
         }).setOrigin(0.5);
     }
 
-    // 🎯 COLOR AUTOMÀTIC SEGONS TIPUS
+    // Determine color based on type if not provided
     let finalColor = color;
-
     if (!finalColor) {
         if (type === "employee") {
             finalColor = "#ff4444";
         } else {
-            finalColor = "#00ff66"; // SEMPRE clicks verds
+            finalColor = "#00ff66";
         }
     }
 
     t.setStyle({ color: finalColor });
-
     t.setText(text);
     t.setPosition(x, y);
     t.setAlpha(1);

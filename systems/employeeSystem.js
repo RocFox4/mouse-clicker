@@ -7,6 +7,7 @@ export function initEmployees(scene) {
     scene.employeeMultiplier = 1;
     scene.employeeDelay = employeeSpeedLevels[0].delay;
     scene.employeeTimer = null;
+    scene.employeesPaused = false;
 
     startEmployeeLoop(scene);
 }
@@ -15,6 +16,7 @@ export function resetEmployees(scene) {
     scene.employees = 0;
     scene.employeeSpeedIndex = 0;
     scene.employeeDelay = employeeSpeedLevels[0].delay;
+    scene.employeesPaused = false;
 
     if (scene.employeeTimer) {
         scene.employeeTimer.remove(false);
@@ -24,17 +26,29 @@ export function resetEmployees(scene) {
     startEmployeeLoop(scene);
 }
 
-// =====================
-// LOOP PRINCIPAL
-// =====================
-function startEmployeeLoop(scene) {
+// Pause employee generation
+export function pauseEmployees(scene) {
+    if (scene.employeeTimer) {
+        scene.employeeTimer.paused = true;
+        scene.employeesPaused = true;
+    }
+}
 
+// Resume employee generation
+export function resumeEmployees(scene) {
+    if (scene.employeeTimer) {
+        scene.employeeTimer.paused = false;
+        scene.employeesPaused = false;
+    }
+}
+
+// Main employee loop
+function startEmployeeLoop(scene) {
     if (!scene || !scene.time) return;
 
-    // KILL HARD (importantíssim)
     if (scene.employeeTimer) {
         scene.employeeTimer.remove(false);
-        scene.employeeTimer.destroy?.(); // extra seguretat
+        scene.employeeTimer.destroy?.();
         scene.employeeTimer = null;
     }
 
@@ -45,41 +59,39 @@ function startEmployeeLoop(scene) {
         loop: true,
 
         callback: () => {
-
             if (!scene || scene.employees <= 0) return;
-            if (scene.strikeActive) return;
+            if (scene.strikeActive || scene.employeesPaused) return;
 
             const gain = scene.employees * (scene.employeeMultiplier || 1);
-
             scene.score += gain;
 
             if (scene.scoreText) {
                 scene.scoreText.setText(scene.score);
             }
 
-            const cx = scene.scale.width / 2;
-            const cy = scene.scale.height / 2 + 40;
+            // Show floating text only every 2nd tick if many employees to reduce lag
+            const shouldShowText = scene.employees < 100 || Math.random() < 0.5;
+            
+            if (shouldShowText) {
+                const cx = scene.scale.width / 2;
+                const cy = scene.scale.height / 2 + 40;
 
-            showFloatingText(
-                scene,
-                cx + Phaser.Math.Between(-80, 80),
-                cy + Phaser.Math.Between(-50, 50),
-                `+${gain}`,
-                null,
-                "employee"
-            );
+                showFloatingText(
+                    scene,
+                    cx + Phaser.Math.Between(-80, 80),
+                    cy + Phaser.Math.Between(-50, 50),
+                    `+${gain}`,
+                    null,
+                    "employee"
+                );
+            }
         }
     });
 }
 
-// =====================
-// BUY EMPLOYEE
-// =====================
+// Buy a new employee
 export function buyEmployee(scene) {
-
-    const cost = Math.round(
-        EMPLOYEE_BASE_COST * Math.pow(1.20, scene.employees)
-    );
+    const cost = Math.round(EMPLOYEE_BASE_COST * Math.pow(1.20, scene.employees));
 
     if (scene.score >= cost) {
         scene.score -= cost;
@@ -95,16 +107,12 @@ export function buyEmployee(scene) {
     return null;
 }
 
-// =====================
-// UPGRADE SPEED
-// =====================
+// Upgrade employee speed
 export function upgradeEmployeeSpeed(scene) {
-
     const next = employeeSpeedLevels?.[scene.employeeSpeedIndex + 1];
     if (!next) return;
 
     if (scene.score >= next.cost) {
-
         scene.score -= next.cost;
         scene.employeeSpeedIndex++;
         scene.employeeDelay = next.delay;
@@ -117,16 +125,14 @@ export function upgradeEmployeeSpeed(scene) {
     }
 }
 
+// Upgrade employee multiplier
 export function upgradeEmployeeMultiplier(scene) {
-
     const next = employeeMultiplierLevels?.[scene.employeeMultIndex + 1];
     if (!next) return false;
 
     if (scene.score >= next.cost) {
-
         scene.score -= next.cost;
         scene.employeeMultIndex++;
-
         scene.employeeMultiplier = next.mult;
 
         if (scene.scoreText) {

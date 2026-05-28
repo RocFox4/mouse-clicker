@@ -1,4 +1,5 @@
 import { showFloatingText } from "./floatingText.js";
+import { resumeEmployees } from "../systems/employeeSystem.js";
 
 const MIN_BET = 1000;
 const PAYOUT_NUMBER = 100;
@@ -239,6 +240,7 @@ export function showRouletteUI(scene) {
         colorGreenBtn.bg.destroy(); colorGreenBtn.txt.destroy();
         closeBtn.bg.destroy(); closeBtn.txt.destroy();
         scene.gameLocked = false;
+        resumeEmployees(scene);
     };
 
     closeBtn.bg.on("pointerdown", () => cleanup());

@@ -1,30 +1,21 @@
 import { clickUpgrades, employeeSpeedLevels, employeeMultiplierLevels } from "../systems/upgradeSystem.js";
+import { resumeEmployees } from "../systems/employeeSystem.js";
 
 export function showStats(scene) {
-
     scene.gameLocked = true;
 
     const cx = scene.scale.width / 2;
     const cy = scene.scale.height / 2;
 
-    // =====================
-    // CURRENT CLICK (REAL STATE)
-    // =====================
-    const current = clickUpgrades?.[scene.clickIndex]
-        || clickUpgrades?.[0];
-
-    // CLICK VALUES (REAL, NOT NEXT)
+    // Get current click upgrade info
+    const current = clickUpgrades?.[scene.clickIndex] || clickUpgrades?.[0];
     const clickMin = current.min * (scene.clickMultiplier || 1);
     const clickMax = current.max * (scene.clickMultiplier || 1);
 
-    // =====================
-    // EMPLOYEES
-    // =====================
+    // Get employee info
     const employees = scene.employees || 0;
-
     const speed = employeeSpeedLevels?.[scene.employeeSpeedIndex];
     const empDelay = speed?.delay || 2000;
-
     const empCpsPerEmployee = employees > 0 ? (1000 / empDelay) : 0;
     const empCpsGlobal = employees * empCpsPerEmployee;
 
@@ -38,9 +29,6 @@ export function showStats(scene) {
         ? `x${nextEmpMult.mult} (cost ${nextEmpMult.cost}c)`
         : "MAX";
 
-    // =====================
-    // BOX
-    // =====================
     const boxWidth = 560;
     const boxHeight = 350;
     const DEPTH = 1000;
@@ -48,9 +36,6 @@ export function showStats(scene) {
     const box = scene.add.rectangle(cx, cy, boxWidth, boxHeight, 0x000000, 0.9);
     box.setDepth(DEPTH);
 
-    // =====================
-    // TEXT
-    // =====================
     const text = scene.add.text(cx, cy, `
 CLICK CURRENT LEVEL ${scene.clickIndex}:
 VALUE: ${clickMin} - ${clickMax}
@@ -72,9 +57,6 @@ GLOBAL CPS: ${empCpsGlobal.toFixed(2)}
 
     text.setDepth(DEPTH + 1);
 
-    // =====================
-    // CLOSE
-    // =====================
     const close = scene.add.text(cx, cy + (boxHeight / 2) - 20, "RETURN", {
         fontSize: "22px",
         color: "#f00"
@@ -87,5 +69,6 @@ GLOBAL CPS: ${empCpsGlobal.toFixed(2)}
         text.destroy();
         close.destroy();
         scene.gameLocked = false;
+        resumeEmployees(scene);
     });
 }

@@ -1,7 +1,7 @@
 import { getLeaderboard } from "../api/api.js";
+import { resumeEmployees } from "../systems/employeeSystem.js";
 
 export function showLeaderboardUI(scene) {
-
     scene.gameLocked = true;
 
     let closed = false;
@@ -32,7 +32,6 @@ export function showLeaderboardUI(scene) {
 
     getLeaderboard()
         .then(data => {
-
             if (closed) return;
 
             loading.destroy();
@@ -51,7 +50,6 @@ export function showLeaderboardUI(scene) {
             }
 
             sorted.forEach((item, i) => {
-
                 const row = scene.add.text(
                     centerX,
                     centerY - 100 + i * 25,
@@ -75,5 +73,6 @@ export function showLeaderboardUI(scene) {
         closed = true;
         ui.forEach(o => o.destroy());
         scene.gameLocked = false;
+        resumeEmployees(scene);
     });
 }
