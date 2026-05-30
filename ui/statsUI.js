@@ -1,7 +1,12 @@
 import { clickUpgrades, employeeSpeedLevels, employeeMultiplierLevels } from "../systems/upgradeSystem.js";
 import { resumeEmployees } from "../systems/employeeSystem.js";
 
+let statsOpen = false;
+
 export function showStats(scene) {
+    if (statsOpen) return;
+    statsOpen = true;
+
     scene.gameLocked = true;
 
     const cx = scene.scale.width / 2;
@@ -65,6 +70,7 @@ GLOBAL CPS: ${empCpsGlobal.toFixed(2)}
     close.setDepth(DEPTH + 1);
 
     close.on("pointerdown", () => {
+        statsOpen = false;
         box.destroy();
         text.destroy();
         close.destroy();

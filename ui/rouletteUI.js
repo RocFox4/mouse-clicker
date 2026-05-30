@@ -1,6 +1,8 @@
 import { showFloatingText } from "./floatingText.js";
 import { resumeEmployees } from "../systems/employeeSystem.js";
 
+let rouletteOpen = false;
+
 const MIN_BET = 1000;
 const PAYOUT_NUMBER = 100;
 const PAYOUT_COLOR = 2;
@@ -21,6 +23,10 @@ WHEEL_NUMBERS.forEach(n => {
 });
 
 export function showRouletteUI(scene) {
+    if (rouletteOpen) return;
+    if (scene.score < 1000) return;
+    rouletteOpen = true;
+    
     scene.gameLocked = true;
 
     const cx = scene.scale.width / 2;
@@ -222,6 +228,8 @@ export function showRouletteUI(scene) {
     });
 
     const cleanup = () => {
+        rouletteOpen = false;
+        scene.rouletteCleanup = null;
         overlay.destroy();
         title.destroy();
         info.destroy();
@@ -242,6 +250,8 @@ export function showRouletteUI(scene) {
         scene.gameLocked = false;
         resumeEmployees(scene);
     };
+    
+    scene.rouletteCleanup = cleanup;
 
     closeBtn.bg.on("pointerdown", () => cleanup());
 

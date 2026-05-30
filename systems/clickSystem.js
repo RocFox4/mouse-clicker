@@ -50,6 +50,7 @@ export function initClickSystem(scene) {
         // ========== STRIKE SYSTEM ==========
         if (scene.strikeActive) {
             scene.strikeClicks++;
+            scene.setScore(scene.score + 1);
             const remaining = scene.strikeRequired - scene.strikeClicks;
 
             if (scene.strikeText) {
@@ -58,7 +59,7 @@ export function initClickSystem(scene) {
                 );
             }
 
-            showFloatingText(scene, pointer.worldX, pointer.worldY, "+1 strike click!", "#ff4444");
+            showFloatingText(scene, pointer.worldX, pointer.worldY - 50, "+1 strike click!", "#ff4444");
 
             if (scene.strikeClicks >= scene.strikeRequired) {
                 scene.strikeActive = false;

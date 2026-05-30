@@ -19,7 +19,7 @@ export default class GameScene extends Phaser.Scene {
 
         // ========== GAME CONFIGURATION ==========
         const MIN_EMPLOYEES_FOR_STRIKE = 10;
-        const STRIKE_CHANCE = 0.075;
+        const STRIKE_CHANCE = 0.10;
         const STRIKE_TIMER_MS = 60000;
         const SCREEN_WIDTH = this.scale.width;
         const SCREEN_HEIGHT = this.scale.height;
@@ -226,7 +226,13 @@ export default class GameScene extends Phaser.Scene {
             else this.hideBtn(this.multBtn);
 
             if (this.score >= 1000) this.showBtn(this.rouletteBtn);
-            else this.hideBtn(this.rouletteBtn);
+            else {
+                this.hideBtn(this.rouletteBtn);
+                if (this.rouletteCleanup) {
+                    this.rouletteCleanup();
+                    this.rouletteCleanup = null;
+                }
+            }
         };
 
         // ========== UI MANAGEMENT BUTTONS ==========
@@ -282,7 +288,8 @@ export default class GameScene extends Phaser.Scene {
             loop: true,
             callback: () => {
                 if (this.employees >= MIN_EMPLOYEES_FOR_STRIKE && !this.strikeActive) {
-                    if (Math.random() < STRIKE_CHANCE) {
+                    const strikeChance = Math.min(0.9, STRIKE_CHANCE * (this.employees / 10));
+                    if (Math.random() < strikeChance) {
                         this.startStrike();
                     }
                 }

@@ -3,7 +3,12 @@ import { resetEmployees, resumeEmployees } from "../systems/employeeSystem.js";
 
 const API_URL = "https://mouse-clicker-api-hwcaehcxdhejg4e3.spaincentral-01.azurewebsites.net";
 
+let saveUIOpen = false;
+
 export function showSaveUI(scene, gameOver = false) {
+    if (saveUIOpen) return;
+    saveUIOpen = true;
+
     scene.gameLocked = true;
 
     const cx = scene.scale.width / 2;
@@ -54,6 +59,7 @@ export function showSaveUI(scene, gameOver = false) {
     }
 
     const closeUI = () => {
+        saveUIOpen = false;
         bg.destroy();
         title.destroy();
         text.destroy();
@@ -129,10 +135,19 @@ export function showSaveUI(scene, gameOver = false) {
         if (scene.speedBtn) scene.speedBtn.setVisible(false).disableInteractive();
         if (scene.multBtn) scene.multBtn.setVisible(false).disableInteractive();
         if (scene.rouletteBtn) scene.rouletteBtn.setVisible(false).disableInteractive();
+        
+        // Call checkUnlocks to ensure all buttons are properly reset
+        scene.checkUnlocks();
     };
 
     saveBtn.on("pointerdown", async () => {
-        if (!inputText) return;
+        if (!inputText) {
+            scene.input.keyboard.off("keydown", keyHandler);
+            closeUI();
+            scene.gameLocked = false;
+            resumeEmployees(scene);
+            return;
+        }
 
         try {
             await fetch(`${API_URL}/score`, {
@@ -147,11 +162,15 @@ export function showSaveUI(scene, gameOver = false) {
             console.error("Error saving score:", err);
         }
 
+        scene.input.keyboard.off("keydown", keyHandler);
+        closeUI();
+        scene.gameLocked = false;
+        
         if (!gameOver) {
             resetGameState();
         }
-
-        showSavedMessage();
+        
+        resumeEmployees(scene);
     });
 
     if (returnBtn) {
